@@ -1,0 +1,67 @@
+import tensorflow as tf
+import numpy as np
+import os
+from matplotlib import pyplot as plt
+
+np.set_printoptions(threshold=np.inf)
+
+mnist = tf.keras.datasets.mnist
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0
+
+model = tf.keras.models.Sequential([      #搭建Sequential模型
+    tf.keras.layers.Flatten(),      #拉直层
+    tf.keras.layers.Dense(128, activation='relu'),  #第一层神经元
+    tf.keras.layers.Dense(10, activation='softmax') #第二层神经元
+])
+
+model.compile(    #配置神经网络训练方法
+    optimizer='adam',   #选择优化器
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),  #选择损失函数
+    metrics=['sparse_categorical_accuracy']   #设置评估标准
+)
+
+checkpoint_save_path = '../class4/MNIST_FC/checkpoint/mnist.ckpt'   #检查是否存在已训练过的模型
+if os.path.exists(checkpoint_save_path + '.index'):
+    print('-------- load the model --------')
+    model.load_weights(checkpoint_save_path)    #载入已训练模型
+
+cp_callback = tf.keras.callbacks.ModelCheckpoint(   #设置模型保存标准
+    filepath=checkpoint_save_path,
+    save_weights_only=True,
+    save_best_only=True
+)
+
+history = model.fit(    #开始训练
+    x_train, y_train, batch_size=32,
+    epochs=5, validation_data=(x_test, y_test),
+    validation_freq=1,
+    callbacks=[cp_callback]
+)
+
+model.summary()   #显示模型网络结构
+
+print(model.trainable_variables)
+with open('../class4/MNIST_FC/weights.txt', 'w') as file:
+    for v in model.trainable_variables:
+        file.write(str(v.name) + '\n')
+        file.write(str(v.shape) + '\n')
+        file.write(str(v.numpy()) + '\n')
+
+acc = history.history['sparse_categorical_accuracy']  #训练集准确率
+val_acc = history.history['val_sparse_categorical_accuracy']  #测试集准确率
+loss = history.history['loss']  #训练集损失值
+val_loss = history.history['val_loss']  #测试集损失值
+
+plt.subplot(1, 2, 1)  #定位子图所占位置
+plt.plot(acc, label='Training Accuracy')  #画出曲线，曲线标签为Training Accuracy
+plt.plot(val_acc, label='Validation Accuracy')
+plt.title('Training and Validation Accuracy') #子图标题
+plt.legend()  #画出图例
+
+plt.subplot(1, 2, 2)
+plt.plot(loss, label='Training Loss')
+plt.plot(val_loss, label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+plt.show()  #展示曲线图
